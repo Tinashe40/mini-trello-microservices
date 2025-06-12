@@ -1,4 +1,4 @@
-package com.tinashe.trello.userService.dto;
+package com.tinashe.trello.userService.DTOs;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

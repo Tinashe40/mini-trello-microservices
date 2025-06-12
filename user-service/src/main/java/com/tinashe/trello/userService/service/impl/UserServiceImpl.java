@@ -1,14 +1,16 @@
 package com.tinashe.trello.userService.service.impl;
 
-import com.tinashe.trello.userService.dto.UserDTO;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+
+import com.tinashe.trello.userService.DTOs.UserDTO;
 import com.tinashe.trello.userService.model.User;
 import com.tinashe.trello.userService.repository.UserRepository;
 import com.tinashe.trello.userService.service.UserService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor

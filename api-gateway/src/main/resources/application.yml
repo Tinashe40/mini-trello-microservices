@@ -34,3 +34,8 @@ spring:
           uri: lb://TEAM-SERVICE
           predicates:
             - Path=/api/teams/**
+
+jwt:
+  secret: nzPhnXtBD7CHcNEEKjIrEtN3zRR/6SDafOwgbGAhWhDWIQiopogFfrTt8k9PWBvczlzhoeCOgNajfD8z+fyNYA==
+  expiration: 3600
+
