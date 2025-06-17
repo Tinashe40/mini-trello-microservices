@@ -62,6 +62,14 @@ public class ProjectController {
         ProjectDTO projectWithTeam = projectService.assignTeamToProject(projectId, teamId);
         return ResponseEntity.ok(projectWithTeam);
     }
+    @PostMapping("/{projectId}/assign-user/{username}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('PROJECT_OWNER')")
+    public ResponseEntity<ProjectDTO> assignUserToProject(
+            @PathVariable Long projectId,
+            @PathVariable String username) {
+        ProjectDTO projectWithUser = projectService.assignUserToProject(projectId, username);
+        return ResponseEntity.ok(projectWithUser);
+    }
 
     @GetMapping("/search")
     @PreAuthorize("hasAnyRole('ADMIN', 'PROJECT_OWNER', 'MEMBER')")

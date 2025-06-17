@@ -13,6 +13,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Project {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -22,11 +23,14 @@ public class Project {
     private String ownerUsername;
     private LocalDateTime createdAt;
     private Integer priority;
+    private boolean archived;
 
+    @ElementCollection
+    private Set<String> assignedUsers = new HashSet<>();
 
     @ManyToMany
     @JoinTable(
-        name= "project_teams",
+        name = "project_teams",
         joinColumns = @JoinColumn(name = "project_id"),
         inverseJoinColumns = @JoinColumn(name = "team_id")
     )

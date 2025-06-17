@@ -44,39 +44,40 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         }
 
         HttpHeaders headers = exchange.getRequest().getHeaders();
-        if (!headers.containsKey(HttpHeaders.AUTHORIZATION)) {
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
-        }
-
         String authHeader = headers.getFirst(HttpHeaders.AUTHORIZATION);
+
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
+            return unauthorized(exchange);
         }
 
         String token = authHeader.substring(7);
 
         try {
-            Key key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)); // ✅ Correct usage
+            Key key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
             Claims claims = Jwts.parserBuilder()
                     .setSigningKey(key)
                     .build()
                     .parseClaimsJws(token)
                     .getBody();
 
-            // Optionally set claims into headers for downstream services
+            // Set claims into headers for downstream services
             ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
-                    .header("username", claims.getSubject())
-                    .header("role", claims.get("role", String.class))
+                    .header("X-User-Id", String.valueOf(claims.get("userId")))
+                    .header("X-Username", claims.getSubject())
+                    .header("X-Email", claims.get("email", String.class))
+                    .header("X-User-Role", claims.get("role", String.class))
                     .build();
 
-            return chain.filter(exchange.mutate().request(mutatedRequest).build());
+            ServerWebExchange mutatedExchange = exchange.mutate().request(mutatedRequest).build();
+            return chain.filter(mutatedExchange);
 
         } catch (SignatureException | MalformedJwtException | IllegalArgumentException e) {
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
+            return unauthorized(exchange);
         }
+    }
+    private Mono<Void> unauthorized(ServerWebExchange exchange) {
+        exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+        return exchange.getResponse().setComplete();
     }
 
     @Override

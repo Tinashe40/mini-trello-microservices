@@ -8,10 +8,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.tinashe.projectService.client.TeamClient;
+import com.tinashe.projectService.client.UserClient;
 import com.tinashe.projectService.dto.ProjectDTO;
 import com.tinashe.projectService.mapper.ProjectMapper;
 import com.tinashe.projectService.model.Project;
-import com.tinashe.projectService.model.Team;
 import com.tinashe.projectService.repository.ProjectRepository;
 import com.tinashe.projectService.repository.TeamRepository;
 
@@ -25,97 +26,115 @@ public class ProjectService {
 
     private final ProjectRepository projectRepo;
     private final TeamRepository teamRepo;
+    private final TeamClient teamClient;
+    private final UserClient userClient;
 
     public ProjectDTO createProject(ProjectDTO dto) {
-        String username = getUsername();
+        String username = getCurrentUsername();
         Project project = ProjectMapper.toEntity(dto);
         project.setOwnerUsername(username);
 
-        log.info("User '{}' is creating a new project: {}", username, dto.getName());
+        log.info("User '{}' is creating project: {}", username, dto.getName());
         return ProjectMapper.toDTO(projectRepo.save(project));
     }
 
     public ProjectDTO updateProject(Long id, ProjectDTO dto) {
-        Project project = findByIdWithCheck(id);
-        if (!canEdit(project)) {
-            log.warn("Unauthorized update attempt by '{}' on project {}", getUsername(), id);
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
+        Project project = findByIdOrThrow(id);
+        validateEditAccess(project);
 
         project.setName(dto.getName());
         project.setDescription(dto.getDescription());
-        log.info("Project '{}' updated by '{}'", project.getId(), getUsername());
+
+        log.info("Project '{}' updated by '{}'", id, getCurrentUsername());
         return ProjectMapper.toDTO(projectRepo.save(project));
     }
 
     public void deleteProject(Long id) {
-        Project project = findByIdWithCheck(id);
-        if (!canEdit(project)) {
-            log.warn("Unauthorized delete attempt by '{}' on project {}", getUsername(), id);
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
+        Project project = findByIdOrThrow(id);
+        validateEditAccess(project);
 
         projectRepo.deleteById(id);
-        log.info("Project '{}' deleted by '{}'", id, getUsername());
+        log.info("Project '{}' deleted by '{}'", id, getCurrentUsername());
     }
 
     public Page<ProjectDTO> getAllProjects(int page, int size) {
-        log.info("User '{}' fetching paginated projects - Page: {}, Size: {}", getUsername(), page, size);
+        log.info("Fetching projects: page={}, size={}, user={}", page, size, getCurrentUsername());
         return projectRepo.findAll(PageRequest.of(page, size)).map(ProjectMapper::toDTO);
     }
 
     public ProjectDTO assignTeamToProject(Long projectId, Long teamId) {
-        Project project = findByIdWithCheck(projectId);
-        if (!canEdit(project)) {
-            log.warn("Unauthorized team assignment by '{}' on project {}", getUsername(), projectId);
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        var project = findByIdOrThrow(projectId);
+        verifyEdit(project);
+
+        if (!Boolean.TRUE.equals(teamClient.exists(teamId))) {
+            log.warn("Team {} not found via Feign", teamId);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found");
         }
 
-        Team team = teamRepo.findById(teamId)
+        var team = teamRepo.findById(teamId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
 
         project.getTeams().add(team);
-        log.info("Team '{}' assigned to project '{}' by '{}'", teamId, projectId, getUsername());
+        log.info("Team {} assigned to project {}", teamId, projectId);
         return ProjectMapper.toDTO(projectRepo.save(project));
+    }
+
+    public ProjectDTO assignUserToProject(Long projectId, String username) {
+        var project = findByIdOrThrow(projectId);
+        verifyEdit(project);
+
+        userClient.getByUsername(username); // throws if not exists
+        project.getAssignedUsers().add(username);
+
+        log.info("User {} assigned to project {}", username, projectId);
+        return ProjectMapper.toDTO(projectRepo.save(project));
+    }
+
+    public Page<ProjectDTO> searchProjects(String q, Long teamId, int page, int size, String sortField, String sortDir) {
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(sortDir), sortField));
+        Page<Project> result;
+
+        if (teamId != null) {
+            result = projectRepo.findByTeamId(teamId, pageRequest);
+        } else if (q != null && !q.trim().isEmpty()) {
+            result = projectRepo.findByNameContainingIgnoreCaseOrOwnerUsernameContainingIgnoreCase(q, q, pageRequest);
+        } else {
+            result = projectRepo.findAll(pageRequest);
+        }
+
+        return result.map(ProjectMapper::toDTO);
     }
 
     // 🔒 Helper methods
 
-    private Project findByIdWithCheck(Long id) {
+    private Project findByIdOrThrow(Long id) {
         return projectRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
     }
+    private void verifyEdit(Project project) {
+    if (project.isArchived()) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot edit an archived project.");
+    }
+}
+
+    private void validateEditAccess(Project project) {
+        if (!canEdit(project)) {
+            log.warn("Unauthorized access by '{}' on project '{}'", getCurrentUsername(), project.getId());
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+    }
 
     private boolean canEdit(Project project) {
-        String username = getUsername();
+        String username = getCurrentUsername();
         return hasRole("ADMIN") || (hasRole("PROJECT_OWNER") && username.equals(project.getOwnerUsername()));
     }
 
-    private String getUsername() {
+    private String getCurrentUsername() {
         return SecurityContextHolder.getContext().getAuthentication().getName();
     }
 
     private boolean hasRole(String role) {
-        return SecurityContextHolder.getContext().getAuthentication()
-                .getAuthorities().stream()
+        return SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
                 .anyMatch(auth -> auth.getAuthority().equals("ROLE_" + role));
     }
-
-    public Page<ProjectDTO> searchProjects(String q, Long teamId, int page, int size, String sortField, String sortDir) {
-    PageRequest pageRequest = PageRequest.of(page, size,
-            Sort.by(Sort.Direction.fromString(sortDir), sortField));
-
-    Page<Project> projects;
-
-    if (teamId != null) {
-        projects = projectRepo.findByTeamId(teamId, pageRequest);
-    } else if (q != null && !q.isEmpty()) {
-        projects = projectRepo.findByNameContainingIgnoreCaseOrOwnerUsernameContainingIgnoreCase(q, q, pageRequest);
-    } else {
-        projects = projectRepo.findAll(pageRequest);
-    }
-
-    return projects.map(ProjectMapper::toDTO);
-}
-
 }
