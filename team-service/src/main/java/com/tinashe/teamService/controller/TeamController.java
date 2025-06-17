@@ -1,12 +1,11 @@
 package com.tinashe.teamService.controller;
 
-import java.util.List;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/teams")
 @RequiredArgsConstructor
+
 public class TeamController {
 
     private final TeamService teamService;
@@ -51,18 +51,13 @@ public class TeamController {
                 .body(teamService.addMember(teamId, memberDTO, currentUserId, currentUserRole));
     }
 
-    @GetMapping("/{teamId}/members")
-    @Operation(summary = "List all members of a team")
-    public ResponseEntity<List<TeamMember>> listMembers(@PathVariable Long teamId) {
-        return ResponseEntity.ok(teamService.listMembers(teamId));
-    }
-
     @GetMapping("/{teamId}/exists")
     @Operation(summary = "Check if a team exists")
     public ResponseEntity<Boolean> exists(@PathVariable Long teamId) {
         return ResponseEntity.ok(teamService.exists(teamId));
     }
 
+    @PreAuthorize("hasRole('OWNER') or hasRole('ADMIN')")
     @DeleteMapping("/{teamId}/members/{userId}")
     @Operation(summary = "Remove a member from a team")
     public ResponseEntity<TeamMember> removeMember(@PathVariable Long teamId,
@@ -72,6 +67,7 @@ public class TeamController {
         return ResponseEntity.ok(teamService.removeMember(teamId, userId, currentUserId, currentUserRole));
     }
 
+    @PreAuthorize("hasRole('OWNER') or hasRole('ADMIN')")
     @DeleteMapping("/{teamId}")
     @Operation(summary = "Delete a team")
     public ResponseEntity<Void> deleteTeam(@PathVariable Long teamId,
@@ -83,11 +79,11 @@ public class TeamController {
         @GetMapping("/{teamId}/members")
         @Operation(summary = "List all members of a team with pagination")
         public ResponseEntity<Page<TeamMember>> listMembers(
-                @PathVariable Long teamId,
-                @RequestParam(defaultValue = "0") int page,
-                @RequestParam(defaultValue = "10") int size) {
-                    Pageable pageable = PageRequest.of(page, size);
-                    return ResponseEntity.ok(teamService.listMembers(teamId, pageable));
-                }
+                            @PathVariable Long teamId,
+                            @RequestParam(defaultValue = "0") int page,
+                            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+            return ResponseEntity.ok(teamService.listMembers(teamId, pageable));
+        }
 
 }

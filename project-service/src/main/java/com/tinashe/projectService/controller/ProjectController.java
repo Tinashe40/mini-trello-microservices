@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tinashe.projectService.dto.ProjectCreateDTO;
 import com.tinashe.projectService.dto.ProjectDTO;
+import com.tinashe.projectService.dto.ProjectUpdateDTO;
 import com.tinashe.projectService.service.ProjectService;
 
 import lombok.RequiredArgsConstructor;
@@ -27,16 +29,18 @@ public class ProjectController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('PROJECT_OWNER')")
-    public ResponseEntity<ProjectDTO> createProject(@RequestBody ProjectDTO projectDTO) {
-        ProjectDTO createdProject = projectService.createProject(projectDTO);
-        return ResponseEntity.ok(createdProject);
+    public ResponseEntity<ProjectDTO> createProject(@RequestBody ProjectCreateDTO dto) {
+        ProjectDTO created = projectService.createProject(dto);
+        return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('PROJECT_OWNER')")
-    public ResponseEntity<ProjectDTO> updateProject(@PathVariable Long id, @RequestBody ProjectDTO projectDTO) {
-        ProjectDTO updatedProject = projectService.updateProject(id, projectDTO);
-        return ResponseEntity.ok(updatedProject);
+    public ResponseEntity<ProjectDTO> updateProject(
+            @PathVariable Long id,
+            @RequestBody ProjectUpdateDTO dto) {
+        ProjectDTO updated = projectService.updateProject(id, dto);
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
@@ -59,16 +63,17 @@ public class ProjectController {
     public ResponseEntity<ProjectDTO> assignTeam(
             @PathVariable Long projectId,
             @PathVariable Long teamId) {
-        ProjectDTO projectWithTeam = projectService.assignTeamToProject(projectId, teamId);
-        return ResponseEntity.ok(projectWithTeam);
+        ProjectDTO result = projectService.assignTeamToProject(projectId, teamId);
+        return ResponseEntity.ok(result);
     }
+
     @PostMapping("/{projectId}/assign-user/{username}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('PROJECT_OWNER')")
-    public ResponseEntity<ProjectDTO> assignUserToProject(
+    public ResponseEntity<ProjectDTO> assignUser(
             @PathVariable Long projectId,
             @PathVariable String username) {
-        ProjectDTO projectWithUser = projectService.assignUserToProject(projectId, username);
-        return ResponseEntity.ok(projectWithUser);
+        ProjectDTO result = projectService.assignUserToProject(projectId, username);
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/search")

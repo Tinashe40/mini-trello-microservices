@@ -3,17 +3,27 @@ package com.tinashe.teamService.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 
 @Configuration
 public class OpenAPIConfig {
     @Bean
-    public OpenAPI customOpenAPI() {
+    public OpenAPI teamServiceOpenAPI() {
         return new OpenAPI()
-                .info(new Info()
-                        .title("Project Service API")
-                        .version("1.0.0")
-                        .description("Handles CRUD operations and team assignments for projects."));
+            .info(new Info().title("Team Service API")
+                .description("Handles team creation, members, and notifications")
+                .version("v1.0"))
+            .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
+            .components(new Components()
+                .addSecuritySchemes("bearerAuth",
+                    new SecurityScheme()
+                        .name("Authorization")
+                        .type(SecurityScheme.Type.HTTP)
+                        .scheme("bearer")
+                        .bearerFormat("JWT")));
     }
 }

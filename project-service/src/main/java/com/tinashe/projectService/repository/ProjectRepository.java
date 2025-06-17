@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -18,4 +19,6 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     @Query("SELECT p FROM Project p JOIN p.teams t WHERE t.id = :teamId")
     Page<Project> findByTeamId(Long teamId, PageRequest pageRequest);
+    Page<Project> findByOwnerUsernameOrAssignedUsersContaining(String ownerUsername, String assignedUser, Pageable pageable);
+
 }
