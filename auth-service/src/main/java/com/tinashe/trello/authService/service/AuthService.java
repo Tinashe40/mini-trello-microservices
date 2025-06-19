@@ -30,18 +30,19 @@ public class AuthService {
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new RuntimeException("Username already taken");
         }
+        Role roleToAssign=request.getRole() !=null ? request.getRole() : Role.MEMBER;
 
         User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(request.getRole())
+                .role(roleToAssign)
                 .build();
 
         userRepository.save(user);
 
         // Sync with User Service
-        syncUserWithUserService(request, user.getRole());
+        syncUserWithUserService(request,  roleToAssign);
     }
 
     public AuthResponse login(LoginRequest request) {

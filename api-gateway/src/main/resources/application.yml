@@ -9,27 +9,41 @@ spring:
     gateway:
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials
-      routes:
-        - id: auth-service
-          uri: lb://AUTH-SERVICE
-          predicates:
-            - Path=/api/auth/**
-        - id: user-service
-          uri: lb://USER-SERVICE
-          predicates:
-            - Path=/api/users/**
-        - id: project-service
-          uri: lb://PROJECT-SERVICE
-          predicates:
-            - Path=/api/projects/**
-        - id: task-service
-          uri: lb://TASK-SERVICE
-          predicates:
-            - Path=/api/tasks/**
-        - id: team-service
-          uri: lb://TEAM-SERVICE
-          predicates:
-            - Path=/api/teams/**
+
+      server:
+        webflux:
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedOrigins: "http://localhost:5173"
+                allowedMethods: "*"
+                allowedHeaders: "*"
+                allowCredentials: true
+
+          routes:
+            - id: auth-service
+              uri: lb://AUTH-SERVICE
+              predicates:
+                - Path=/api/auth/**
+              filters:
+                - RemoveRequestHeader=Cookie
+                - AddRequestHeader=Content-Type, application/json
+            - id: user-service
+              uri: lb://USER-SERVICE
+              predicates:
+                - Path=/api/users/**
+            - id: project-service
+              uri: lb://PROJECT-SERVICE
+              predicates:
+                - Path=/api/projects/**
+            - id: task-service
+              uri: lb://TASK-SERVICE
+              predicates:
+                - Path=/api/tasks/**
+            - id: team-service
+              uri: lb://TEAM-SERVICE
+              predicates:
+                - Path=/api/teams/**
 
 eureka:
   client:
